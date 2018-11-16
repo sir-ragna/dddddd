@@ -6,10 +6,12 @@ import math
 import subprocess
 import re
 
-# USER MY SHITTY CODE AT YOUR OWN RISK.
+# Create an image of a USB stick.
+# USE MY SHITTY CODE AT YOUR OWN RISK.
 
 class PhysicalDevice(object):
-    """wmic diskdrive get DeviceId,TotalSectors,BytesPerSector,Model,InterfaceType"""
+    """Container to store the output of
+    `wmic diskdrive get DeviceId,TotalSectors,BytesPerSector,Model,InterfaceType`"""
     def __init__(self, bytes_per_sector, device_id, interface_type, model, total_sectors):
         self.bytes_per_sector = bytes_per_sector
         self.device_id = device_id
@@ -17,15 +19,16 @@ class PhysicalDevice(object):
         self.model = model
         self.total_sectors = total_sectors
 
-# I got this function from stack overflow but I forgot the link
 def convert_size(size_bytes):
-   if size_bytes == 0:
-       return "0B"
-   size_name = ("B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB")
-   i = int(math.floor(math.log(size_bytes, 1024)))
-   p = math.pow(1024, i)
-   s = round(size_bytes / p, 2)
-   return "%s %s" % (s, size_name[i])
+    """From James Sapam on Stack overflow: 
+    https://stackoverflow.com/questions/5194057/better-way-to-convert-file-sizes-in-python/14822210#14822210"""
+    if size_bytes == 0:
+        return "0B"
+    size_name = ("B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB")
+    i = int(math.floor(math.log(size_bytes, 1024)))
+    p = math.pow(1024, i)
+    s = round(size_bytes / p, 2)
+    return "%s %s" % (s, size_name[i])
 
 def dd(physical_device, destination, sector_read_amount=128000):
     sector_len = physical_device.bytes_per_sector
@@ -46,16 +49,32 @@ def dd(physical_device, destination, sector_read_amount=128000):
                 i += rest_sectors
 
             dest_fh.write(buffer)
-
             sys.stdout.write((' ' * 80) + '\r')
             sys.stdout.write("Sectors: %d (%s)" % (i, convert_size(i * sector_len)))
-            sys.stdout.flush()
-        print('\nFlushing')
+       
+        # I know this is ridiculous but sometimes WMI doesn't report the 
+        # amount of sectors accurately. The only option here is now to 
+        # attempt to read past the amount of reported sectors until you 
+        # get an error.
+        # https://stackoverflow.com/questions/9901792/wmi-win32-diskdrive-to-get-total-sector-on-the-physical-disk-drive#28709238
+        print('\nDone reading the reported sectors.')
+        print('Now attempting to read the unreported sectors by Windows. (slow)')
+        unreported = 0
+        while True:
+            try:
+                buffer = os.read(disk_fh, sector_len)
+                unreported += 1
+                dest_fh.write(buffer)
+            except PermissionError:
+                break
+
+        print(" `-> %d unreported sectors found" % unreported)
+        print('Flushing')
         dest_fh.flush()
         print('Done')
 
     os.close(disk_fh)
-
+ 
 def get_physical_devices():
     command = "wmic diskdrive get DeviceId,TotalSectors,BytesPerSector,Model,InterfaceType"
     wmi_lines = subprocess.check_output(command).decode('cp1252').split('\r\n')
@@ -78,16 +97,18 @@ if __name__ == "__main__":
     ph_devices = get_physical_devices()
 
     # Filter out the non-USB devices to avoid accidents (for now)
-    ph_devices = list(filter(lambda ph_dev: ph_dev.interface_type == 'USB', ph_devices))
+    ph_devices = list(filter(
+        lambda ph_dev: ph_dev.interface_type == 'USB', ph_devices))
 
     if len(ph_devices) == 0:
         print('No devices found to copy.')
         sys.exit(1)
     
     print('-' * 80)
-    print('DEVICES TO COPY')
+    print('DEVICES LIST')
     for index,ph_device in enumerate(ph_devices):
-        print(f'({index}) [{ph_device.interface_type}] {ph_device.device_id}\t{ph_device.model}')
+        print(f'({index}) [{ph_device.interface_type}] ' + 
+                       '{ph_device.device_id}\t{ph_device.model}')
     answer = input('Pease select a device to image. [q to quit] ')
     try:
         ph_device_to_image = ph_devices[int(answer)]
