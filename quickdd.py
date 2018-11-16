@@ -8,6 +8,7 @@ import re
 
 # Create an image of a USB stick.
 # USE MY SHITTY CODE AT YOUR OWN RISK.
+# TODO implement compression: https://docs.python.org/3/library/lzma.html
 
 class PhysicalDevice(object):
     """Container to store the output of
@@ -34,9 +35,14 @@ def dd(physical_device, destination, sector_read_amount=128000):
     sector_len = physical_device.bytes_per_sector
     sector_total = physical_device.total_sectors
 
-    # Windows os.open flags docs:
-    # https://msdn.microsoft.com/en-us/library/z0kc8e3z.aspx
-    disk_fh = os.open(physical_device.device_id, os.O_BINARY | os.O_RDONLY | os.O_SEQUENTIAL)
+    try:
+        # Windows os.open flags docs:
+        # https://msdn.microsoft.com/en-us/library/z0kc8e3z.aspx
+        disk_fh = os.open(physical_device.device_id, os.O_BINARY | os.O_RDONLY | os.O_SEQUENTIAL)
+    except PermissionError:
+        print("You do not have enough permissions.")
+        sys.exit(1)
+    
     with open(destination, 'wb') as dest_fh:
         i = 0
         while i < sector_total:
@@ -50,7 +56,7 @@ def dd(physical_device, destination, sector_read_amount=128000):
 
             dest_fh.write(buffer)
             sys.stdout.write((' ' * 80) + '\r')
-            sys.stdout.write("Sectors: %d (%s)" % (i, convert_size(i * sector_len)))
+            sys.stdout.write("%d sectors written (%s)" % (i, convert_size(i * sector_len)))
        
         # I know this is ridiculous but sometimes WMI doesn't report the 
         # amount of sectors accurately. The only option here is now to 
@@ -67,14 +73,13 @@ def dd(physical_device, destination, sector_read_amount=128000):
                 dest_fh.write(buffer)
             except PermissionError:
                 break
-
         print(" `-> %d unreported sectors found" % unreported)
-        print('Flushing')
+        print("Total sectors = %d" % (sector_total + unreported))
+        print("Total bytes written = %d" % (sector_len * (sector_total + unreported)))
         dest_fh.flush()
-        print('Done')
 
     os.close(disk_fh)
- 
+
 def get_physical_devices():
     command = "wmic diskdrive get DeviceId,TotalSectors,BytesPerSector,Model,InterfaceType"
     wmi_lines = subprocess.check_output(command).decode('cp1252').split('\r\n')
@@ -108,7 +113,7 @@ if __name__ == "__main__":
     print('DEVICES LIST')
     for index,ph_device in enumerate(ph_devices):
         print(f'({index}) [{ph_device.interface_type}] ' + 
-                       '{ph_device.device_id}\t{ph_device.model}')
+                       f'{ph_device.device_id}\t{ph_device.model}')
     answer = input('Pease select a device to image. [q to quit] ')
     try:
         ph_device_to_image = ph_devices[int(answer)]
