@@ -13,7 +13,11 @@ import re
 class PhysicalDevice(object):
     """Container to store the output of
     `wmic diskdrive get DeviceId,TotalSectors,BytesPerSector,Model,InterfaceType`"""
-    def __init__(self, bytes_per_sector, device_id, interface_type, model, total_sectors):
+    def __init__(self, bytes_per_sector, 
+                       device_id, 
+                       interface_type, 
+                       model, 
+                       total_sectors):
         self.bytes_per_sector = bytes_per_sector
         self.device_id = device_id
         self.interface_type = interface_type
@@ -38,7 +42,8 @@ def dd(physical_device, destination, sector_read_amount=128000):
     try:
         # Windows os.open flags docs:
         # https://msdn.microsoft.com/en-us/library/z0kc8e3z.aspx
-        disk_fh = os.open(physical_device.device_id, os.O_BINARY | os.O_RDONLY | os.O_SEQUENTIAL)
+        disk_fh = os.open(physical_device.device_id, 
+                          os.O_BINARY | os.O_RDONLY | os.O_SEQUENTIAL)
     except PermissionError:
         print("You do not have enough permissions.")
         sys.exit(1)
@@ -56,7 +61,8 @@ def dd(physical_device, destination, sector_read_amount=128000):
 
             dest_fh.write(buffer)
             sys.stdout.write((' ' * 80) + '\r')
-            sys.stdout.write("%d sectors written (%s)" % (i, convert_size(i * sector_len)))
+            sys.stdout.write("%d sectors written (%s)" % 
+                                             (i, convert_size(i * sector_len)))
        
         # I know this is ridiculous but sometimes WMI doesn't report the 
         # amount of sectors accurately. The only option here is now to 
@@ -64,7 +70,7 @@ def dd(physical_device, destination, sector_read_amount=128000):
         # get an error.
         # https://stackoverflow.com/questions/9901792/wmi-win32-diskdrive-to-get-total-sector-on-the-physical-disk-drive#28709238
         print('\nDone reading the reported sectors.')
-        print('Now attempting to read the unreported sectors by Windows. (slow)')
+        print('Now attempting to read the unreported sectors by Windows.')
         unreported = 0
         while True:
             try:
@@ -75,7 +81,8 @@ def dd(physical_device, destination, sector_read_amount=128000):
                 break
         print(" `-> %d unreported sectors found" % unreported)
         print("Total sectors = %d" % (sector_total + unreported))
-        print("Total bytes written = %d" % (sector_len * (sector_total + unreported)))
+        print("Total bytes written = %d" % 
+                                    (sector_len * (sector_total + unreported)))
         dest_fh.flush()
 
     os.close(disk_fh)
@@ -121,7 +128,9 @@ if __name__ == "__main__":
         print('Failed to select a device. Exiting ...')
         sys.exit(1)
     
-    image_destination = os.path.join(os.getcwd(), ph_device.model.replace(' ', '') + '.copy')
-    print(f"\nWriting the device {ph_device_to_image.device_id} to the file {image_destination}\n")
+    image_destination = os.path.join(os.getcwd(), 
+                                    ph_device.model.replace(' ', '') + '.copy')
+    print(f"\nWriting the device {ph_device_to_image.device_id}" + 
+                                         f" to the file {image_destination}\n")
     sleep(3) # Sleep for 3 seconds to allow for panic Ctrl+C exits
     dd(ph_device_to_image, image_destination)
