@@ -13,7 +13,7 @@ The script is interactive. It will ask you which usb drive to copy.
 
 The `seek()` function appears to work except when you call `file_handle.seek(0,2)`. This should go to the end of the _file_ and return the total size in bytes. This simply throws an OS Error when you try it on a physical windows drive. (`os.lseek()` has the same behaviour.)
 
-To retrieve the total size you need to read out you can use Windows Management Instrumentation commands. You can retrieve the sector size and the total amount of sectors to read with: 
+To retrieve the disk size you can use Windows Management Instrumentation commands. You can retrieve the sector size and the total amount of sectors to read with: 
 
     wmic diskdrive get DeviceId,TotalSectors,BytesPerSector,Model,InterfaceType
 
@@ -24,7 +24,7 @@ This works, [except that it sometimes doesn't](https://stackoverflow.com/questio
 
 #### workaround
 
-First I read out the reported sectors in large chunks. By default I read 128000 sectors at a time (for 512 sectors this means I read chunks of 62MB). This is really fast.
+First I read out the reported sectors in large chunks. By default I read 128000 sectors at a time (for 512 sectors this means I read chunks of 62MB). This is fast.
 
     sector_read_amount = 128000
     with open(destination, 'wb') as dest_fh:
@@ -50,3 +50,4 @@ And when these large chunks are exhausted I will start reading the unreported se
             except PermissionError:
               break
 
+This works and creates the same images as _dd_ that comes pre-installed with _git for windows_. I did notice that Windows sometimes seems to update 3 bytes on the FAT32 filesystem of the USB stick I plugged in. [vbindiff](https://www.cjmweb.net/vbindiff/) is a great tool to compare large binary files.
