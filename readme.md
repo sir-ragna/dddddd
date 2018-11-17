@@ -38,8 +38,7 @@ First I read out the reported sectors in large chunks. By default I read 128000 
                 buffer = os.read(disk_fh, sector_len * rest_sectors)
                 i += rest_sectors
         dest_fh.write(buffer)
-
-And when these large chunks are exhausted I will start reading the unreported sectors one by one until a PermissionError is thrown.
+When these large chunks are exhausted I will start reading the unreported sectors one by one until a PermissionError is thrown.
 
         unreported = 0
         while True:
