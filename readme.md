@@ -44,7 +44,7 @@ After messing around with a few windows utilities I figure that WMI gives me all
 
 ## Unreported sectors
 
-After comparing the images my code produces however I figure that other tools manage to extract more bytes than my tool. It turns out that Windows sometimes lies about the total number of sectors. This is documented on MSDN.
+After testing with `dd` I figured that my script didn't extract enough bytes from the USB stick I used to test with. It turns out that WMI sometimes lies about the total number of sectors. This is documented on MSDN.
 
 > Note: the value for this property is obtained through extended functions of BIOS interrupt 13h. The value may be inaccurate if the drive uses a translation scheme to support high-capacity disk sizes. Consult the manufacturer for accurate drive specifications.
 > https://docs.microsoft.com/en-us/windows/desktop/CIMWin32Prov/win32-diskdrive
